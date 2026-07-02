@@ -809,15 +809,14 @@ fn TCPTests(comptime xev: type, comptime Impl: type) type {
                 &std.mem.toBytes(@as(c_int, 8192)),
             );
 
-            const send_buf = comptime blk: {
-                @setEvalBranchQuota(2_000_000);
-                var b: [1_000_000]u8 = undefined;
-                const pat = [_]u8{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 0 };
-                for (0..100_000) |i| {
-                    for (0..10) |j| b[i * 10 + j] = pat[j];
-                }
-                break :blk b;
-            };
+            // 0.17: `pat ** 100_000` array-repeat operator removed. Repeat the
+            // 10-byte pattern via `@splat` over an array element type, then
+            // `@bitCast` the contiguous `[100_000][10]u8` down to `[1_000_000]u8`
+            // (1:1 bytes, no padding). Native op — cheap at comptime.
+            const send_buf: [1_000_000]u8 = @bitCast(@as(
+                [100_000][10]u8,
+                @splat([_]u8{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 0 }),
+            ));
             var sent_unqueued: usize = 0;
 
             // First we try to send the whole 1MB buffer in one write operation, this _should_ result
