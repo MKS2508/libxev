@@ -520,11 +520,11 @@ fn TCPTests(comptime xev: type, comptime Impl: type) type {
         test "TCP: Stream decls" {
             if (!@hasDecl(Impl, "S")) return;
             const Stream = Impl.S;
-            inline for (@typeInfo(Stream).@"struct".decls) |decl| {
-                const Decl = @TypeOf(@field(Stream, decl.name));
+            inline for (@typeInfo(Stream).@"struct".decl_names) |decl| {
+                const Decl = @TypeOf(@field(Stream, decl));
                 if (Decl == void) continue;
-                if (!@hasDecl(Impl, decl.name)) {
-                    @compileError("missing decl: " ++ decl.name);
+                if (!@hasDecl(Impl, decl)) {
+                    @compileError("missing decl: " ++ decl);
                 }
             }
         }
