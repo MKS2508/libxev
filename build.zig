@@ -19,14 +19,12 @@ pub fn build(b: *std.Build) !void {
         bool,
         "emit-man-pages",
         "Set to true to build man pages. Requires scdoc. Defaults to true if scdoc is found.",
-    ) orelse if (b.findProgram(
-        &[_][]const u8{"scdoc"},
-        &[_][]const u8{},
-    )) |_|
+    ) orelse if (b.findProgram(.{
+        .names = &[_][]const u8{"scdoc"},
+    })) |_|
         true
-    else |err| switch (err) {
-        error.FileNotFound => false,
-    };
+    else
+        false;
 
     const emit_bench = b.option(
         bool,
@@ -86,19 +84,27 @@ pub fn build(b: *std.Build) !void {
     );
 
     // pkg-config
+    //
+    // 0.17 migration: `b.install_prefix` no longer exists — the Build/Maker
+    // split moved install-path resolution out of the configure phase (only
+    // known at make-time via `Maker.zig`, not synchronously reachable from
+    // `build()`). Switched to the standard relocatable pkg-config idiom
+    // (`prefix=${pcfiledir}/../..`) so the file no longer needs an eager
+    // absolute prefix string at all — this is portable pkg-config practice,
+    // not a workaround for the missing field.
     const pc: *Step.InstallFile = pc: {
-        const file = b.addWriteFile("libxev.pc", b.fmt(
-            \\prefix={s}
-            \\includedir=${{prefix}}/include
-            \\libdir=${{prefix}}/lib
+        const file = b.addWriteFile("libxev.pc",
+            \\prefix=${pcfiledir}/../..
+            \\includedir=${prefix}/include
+            \\libdir=${prefix}/lib
             \\
             \\Name: libxev
             \\URL: https://github.com/mitchellh/libxev
             \\Description: High-performance, cross-platform event loop
             \\Version: 0.1.0
-            \\Cflags: -I${{includedir}}
-            \\Libs: -L${{libdir}} -lxev
-        , .{b.install_prefix}));
+            \\Cflags: -I${includedir}
+            \\Libs: -L${libdir} -lxev
+        );
         break :pc b.addInstallFileWithDir(
             file.getDirectory().path(b, "libxev.pc"),
             .prefix,
@@ -177,12 +183,12 @@ fn buildBenchmarks(
     var steps: std.ArrayList(*Step.Compile) = .empty;
     defer steps.deinit(alloc);
 
-    var dir = try std.Io.Dir.cwd().openDir(
+    // 0.17 migration: `b.build_root` renamed to `b.root` (`Cache.Path`) and
+    // its `.join` now takes a single joined sub_path, not multi-part
+    // components — use `Cache.Path.openDir` directly instead.
+    var dir = try b.root.openDir(
         io,
-        try b.build_root.join(
-            b.allocator,
-            &.{ "src", "bench" },
-        ),
+        b.pathJoin(&.{ "src", "bench" }),
         .{ .iterate = true },
     );
     defer dir.close(io);
@@ -233,12 +239,10 @@ fn buildExamples(
     var steps: std.ArrayList(*Step.Compile) = .empty;
     defer steps.deinit(alloc);
 
-    var dir = try std.Io.Dir.cwd().openDir(
+    // 0.17 migration: see buildBenchmarks — `b.build_root` -> `b.root`.
+    var dir = try b.root.openDir(
         io,
-        try b.build_root.join(
-            b.allocator,
-            &.{"examples"},
-        ),
+        "examples",
         .{ .iterate = true },
     );
     defer dir.close(io);
@@ -313,9 +317,10 @@ fn manPages(b: *std.Build) ![]const *Step {
     var steps: std.ArrayList(*Step) = .empty;
     defer steps.deinit(alloc);
 
-    var dir = try std.Io.Dir.cwd().openDir(
+    // 0.17 migration: see buildBenchmarks — `b.build_root` -> `b.root`.
+    var dir = try b.root.openDir(
         io,
-        try b.build_root.join(b.allocator, &.{"docs"}),
+        "docs",
         .{ .iterate = true },
     );
     defer dir.close(io);

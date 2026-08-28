@@ -73,7 +73,7 @@ test Intrusive {
     try testing.expect(q.empty());
 
     // Elems
-    var elems: [10]Elem = .{Elem{}} ** 10;
+    var elems: [10]Elem = @splat(Elem{});
 
     // One
     try testing.expect(q.pop() == null);
