@@ -3,20 +3,5 @@
     .minimum_zig_version = "0.17.0-dev.1893+78e3b1c73",
     .version = "0.0.0",
     .fingerprint = 0x30f7363573edabf3,
-    // Explicit list instead of `.{""}`: on Zig 0.17.0-dev.1893 a package
-    // declaring `.paths = .{""}` does not get the archive's root directory
-    // stripped, so build.zig.zon lands one level down and the package resolves
-    // as `N-V-__` (no name, no version) — the dependency is unusable. Verified
-    // against mitchellh/libxev upstream, which has the same declaration and
-    // reproduces it identically.
-    .paths = .{
-        "build.zig",
-        "build.zig.zon",
-        "src",
-        "include",
-        "examples",
-        "docs",
-        "LICENSE",
-        "README.md",
-    },
+    .paths = .{""},
 }
