@@ -61,17 +61,29 @@ constant in the plan comes from a citable header. **Mark their provenance in a c
 never dress them up as header constants** — assert the layout at comptime, and cross-check
 against two independent sources. A wrong value only shows up when it runs on real Windows.
 
-## Iterating without re-pinning
+## Iterating, and how a bump actually closes
 
-`quic-zig` pins this fork by commit + hash in `build.zig.zon:5-8`. During development use
-`zig build --fork=<path to this checkout>` (Zig 0.17-dev 1893), which resolves the
-dependency against a local checkout — verified to produce an identical error set to the
-pinned tarball.
+`quic-zig` consumes this fork **two ways at once**: a pinned tarball in
+`build.zig.zon:5-8` **and a committed vendored tree in `zig-pkg/`**.
 
-🔴 **Order matters**: commit and **push here first**, `zig fetch --save` in `quic-zig`
-**after**. The other way round the sha does not exist yet and the `.zon` is left broken.
+🔴 **`zig-pkg/` is the workaround, not stale cache.** On Zig 0.17.0-dev.1893 this
+dependency **does not resolve by fetch**: the archive is extracted without stripping
+GitHub's root directory, `build.zig.zon` is not found, and the package resolves to
+`N-V-__8AAE…` → hash mismatch. A pin works *only* because its extracted tree is committed
+there. Root cause undetermined, with two hypotheses ruled out by control (zkit resolves
+EXIT=0 on the same compiler, so the double-nesting is not the signal; an explicit `.paths`
+fails too). See `quic-zig` commit `d978f2c`.
+
+**Therefore a bump is: push here → re-pin `build.zig.zon` → re-vendor `zig-pkg/` by hand.**
+`zig fetch --save` alone leaves the build broken. Pin and vendored tree land together.
+
+**During development, skip all of that**: `zig build --fork=<path to this checkout>`
+(Zig 0.17-dev 1893) resolves against a local checkout and bypasses fetch entirely —
+verified to produce an identical error set. Re-vendor once, at the end of M6b.
 
 ## Relationship to the pin, as of 2026-09-02
 
-This fork is **7 commits ahead** of the pinned commit `cedcbf7`, but **`src/` is
-byte-identical** — those 7 touch only build and CI. There is no drift to reconcile.
+The pin is `c1e223b`, which **is** this fork's `main` — no drift. (It was `cedcbf7`, a
+commit from the migration branch that still declared 1884 and had no comptime guard;
+another session moved it in `quic-zig` `d978f2c`.) Any commit added here after `c1e223b`
+that touches `src/` needs the full bump procedure above before `quic-zig` sees it.
