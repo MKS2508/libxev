@@ -63,23 +63,32 @@ against two independent sources. A wrong value only shows up when it runs on rea
 
 ## Iterating, and how a bump actually closes
 
-`quic-zig` consumes this fork **two ways at once**: a pinned tarball in
-`build.zig.zon:5-8` **and a committed vendored tree in `zig-pkg/`**.
+`quic-zig` consumes this fork as a **pinned tarball** in `build.zig.zon:5-8`. That is the
+whole mechanism.
 
-🔴 **`zig-pkg/` is the workaround, not stale cache.** On Zig 0.17.0-dev.1893 this
-dependency **does not resolve by fetch**: the archive is extracted without stripping
-GitHub's root directory, `build.zig.zon` is not found, and the package resolves to
-`N-V-__8AAE…` → hash mismatch. A pin works *only* because its extracted tree is committed
-there. Root cause undetermined, with two hypotheses ruled out by control (zkit resolves
-EXIT=0 on the same compiler, so the double-nesting is not the signal; an explicit `.paths`
-fails too). See `quic-zig` commit `d978f2c`.
+> 🔴 **RETRACTED 2026-09-03 — this section used to claim the opposite, and it was wrong.**
+>
+> It said `zig-pkg/` was a load-bearing workaround: that this dependency *"does not resolve
+> by fetch"* on Zig 0.17.0-dev.1893, that the pin worked *only* because the extracted tree
+> was committed, and that **every bump required re-vendoring by hand**. **All false.** I
+> wrote it from another session's commit message without measuring it.
+>
+> `quic-zig` commit **`cf68ecc`** measured it both ways and disproved it:
+> - `zig fetch libxev@c1e223b` with an empty isolated cache → **EXIT=0**, returning exactly
+>   the hash the `.zon` pins. Positive control: `zkit` fetches just as cleanly, and **both**
+>   emit the same `DirNotEmpty` warning — so that symptom discriminates nothing.
+> - Clean room, fresh clone, two independent isolated caches: **with `zig-pkg` → 51/51
+>   steps; without it → 51/51 steps and zero resolution errors.** The package store of the
+>   run without `zig-pkg` holds a single entry, and it is the pinned one.
+>
+> The 88 files got committed on their own because that repo's `.gitignore` carried
+> `.zig-cache` but not `zig-pkg`. `styx` has the same directory and **does** ignore it — that
+> contrast is what closed the diagnosis. `zig-pkg/` is now untracked and gitignored there.
 
-**Therefore a bump is: push here → re-pin `build.zig.zon` → re-vendor `zig-pkg/` by hand.**
-`zig fetch --save` alone leaves the build broken. Pin and vendored tree land together.
+**So a bump is: push here → `zig fetch --save` in `quic-zig`.** Nothing to re-vendor.
 
-**During development, skip all of that**: `zig build --fork=<path to this checkout>`
-(Zig 0.17-dev 1893) resolves against a local checkout and bypasses fetch entirely —
-verified to produce an identical error set. Re-vendor once, at the end of M6b.
+**To iterate against a local checkout without going through fetch at all**:
+`zig build --fork=<path to this checkout>`.
 
 ## Relationship to the pin, as of 2026-09-02
 
