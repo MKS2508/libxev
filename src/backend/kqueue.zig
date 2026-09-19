@@ -3099,7 +3099,7 @@ test "kqueue: tick(0) flushes EV_DELETE after disarm" {
 
     // Second read: if stale filter lingers, it fires alongside the new
     // one and fire_count exceeds 2.
-    _ = try xev_posix.write(writer, &[_]u8{43, 44});
+    _ = try xev_posix.write(writer, &[_]u8{ 43, 44 });
     var c2: Completion = .{
         .op = .{ .read = .{ .fd = reader, .buffer = .{ .slice = &buf } } },
         .userdata = &fire_count,
@@ -3132,10 +3132,16 @@ test "kqueue: multiple disarms in a single tick(0)" {
     defer loop.deinit();
 
     const pipe1 = try makePipe();
-    defer { xev_posix.close(pipe1[0]); xev_posix.close(pipe1[1]); }
+    defer {
+        xev_posix.close(pipe1[0]);
+        xev_posix.close(pipe1[1]);
+    }
 
     const pipe2 = try makePipe();
-    defer { xev_posix.close(pipe2[0]); xev_posix.close(pipe2[1]); }
+    defer {
+        xev_posix.close(pipe2[0]);
+        xev_posix.close(pipe2[1]);
+    }
 
     var fire_count: usize = 0;
     var buf1: [16]u8 = undefined;
@@ -3306,7 +3312,7 @@ test "kqueue: rapid tick(0) disarm cycles" {
     try testing.expectEqual(@as(usize, 0), loop.active);
 
     // Verify no stale filters remain.
-    _ = try xev_posix.write(writer, &[_]u8{9, 9, 9});
+    _ = try xev_posix.write(writer, &[_]u8{ 9, 9, 9 });
     try loop.run(.no_wait);
     try testing.expectEqual(@as(usize, 5), fire_total);
 }
@@ -3379,8 +3385,14 @@ test "kqueue: tick(0) flushes disarm from kevent event processing path" {
 
     const pA = try makePipe();
     const pB = try makePipe();
-    defer { xev_posix.close(pA[0]); xev_posix.close(pA[1]); }
-    defer { xev_posix.close(pB[0]); xev_posix.close(pB[1]); }
+    defer {
+        xev_posix.close(pA[0]);
+        xev_posix.close(pA[1]);
+    }
+    defer {
+        xev_posix.close(pB[0]);
+        xev_posix.close(pB[1]);
+    }
 
     const State = struct {
         fire_count: usize = 0,
@@ -3487,8 +3499,14 @@ test "kqueue: re-add armed completion from callback does not corrupt queue" {
 
     const p1 = try makePipe();
     const p2 = try makePipe();
-    defer { xev_posix.close(p1[0]); xev_posix.close(p1[1]); }
-    defer { xev_posix.close(p2[0]); xev_posix.close(p2[1]); }
+    defer {
+        xev_posix.close(p1[0]);
+        xev_posix.close(p1[1]);
+    }
+    defer {
+        xev_posix.close(p2[0]);
+        xev_posix.close(p2[1]);
+    }
 
     const State = struct {
         fire_count: usize = 0,
