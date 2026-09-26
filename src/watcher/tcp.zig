@@ -695,8 +695,10 @@ fn TCPTests(comptime xev: type, comptime Impl: type) type {
         }
 
         test "TCP: a send that fails with EPIPE raises no SIGPIPE" {
-            // Only the Linux backends suppress the signal (MSG_NOSIGNAL).
-            if (builtin.os.tag != .linux) return error.SkipZigTest;
+            // We have no way to get a socket in WASI from a WASI context.
+            if (builtin.os.tag == .wasi) return error.SkipZigTest;
+            // No SIGPIPE on Windows.
+            if (builtin.os.tag == .windows) return error.SkipZigTest;
 
             const testing = std.testing;
 
