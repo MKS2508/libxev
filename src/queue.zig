@@ -112,7 +112,7 @@ test "Intrusive: re-enqueue across queues clears next" {
     var qA: Queue = .{};
     var qB: Queue = .{};
 
-    var elems: [5]Elem = .{Elem{}} ** 5;
+    var elems: [5]Elem = @splat(Elem{});
 
     // Enqueue all into A.
     for (&elems) |*e| qA.push(e);
@@ -154,7 +154,7 @@ test "Intrusive: drain and refill" {
     var qA: Queue = .{};
     var qB: Queue = .{};
 
-    var elems: [5]Elem = .{Elem{}} ** 5;
+    var elems: [5]Elem = @splat(Elem{});
 
     // Enqueue all into A.
     for (&elems) |*e| qA.push(e);
@@ -181,7 +181,7 @@ test "Intrusive: rapid enqueue-dequeue cycles" {
     const Queue = Intrusive(Elem);
 
     var q: Queue = .{};
-    var elems: [10]Elem = .{Elem{}} ** 10;
+    var elems: [10]Elem = @splat(Elem{});
 
     for (0..100) |_| {
         for (&elems) |*e| q.push(e);
