@@ -11,6 +11,12 @@ const heap = @import("../heap.zig");
 const ThreadPool = @import("../ThreadPool.zig");
 const Async = @import("../main.zig").Epoll.Async;
 
+/// Sending on a socket whose peer has gone fails with EPIPE, and also raises
+/// SIGPIPE, which kills the process by default. A library can't ignore the
+/// signal for its whole process, so every send asks the kernel not to raise
+/// it; the caller still gets error.BrokenPipe.
+const send_flags: u32 = linux.MSG.NOSIGNAL;
+
 /// In Zig 0.16, `std.posix.epoll_create1`, `epoll_ctl`, and `epoll_wait`
 /// were removed. These helpers replicate the old wrappers using the raw
 /// Linux syscall layer (`std.os.linux`).
@@ -1074,13 +1080,13 @@ pub const Completion = struct {
 
             .send => |*op| .{
                 .send = switch (op.buffer) {
-                    .slice => |v| xev_posix.send(op.fd, v, 0),
-                    .array => |*v| xev_posix.send(op.fd, v.array[0..v.len], 0),
+                    .slice => |v| xev_posix.send(op.fd, v, send_flags),
+                    .array => |*v| xev_posix.send(op.fd, v.array[0..v.len], send_flags),
                 },
             },
 
             .sendmsg => |*op| .{
-                .sendmsg = if (xev_posix.sendmsg(op.fd, op.msghdr, 0)) |v|
+                .sendmsg = if (xev_posix.sendmsg(op.fd, op.msghdr, send_flags)) |v|
                     v
                 else |err|
                     err,
@@ -1212,7 +1218,11 @@ pub const Operation = union(OperationType) {
         socket: posix.socket_t,
         addr: posix.sockaddr = undefined,
         addr_size: posix.socklen_t = @sizeOf(posix.sockaddr),
-        flags: u32 = posix.SOCK.CLOEXEC,
+        /// Non-blocking, like the sockets TCP.init creates on this backend:
+        /// a write is performed once the fd reports writable, and on a
+        /// blocking socket one larger than the free buffer stalls the loop.
+        /// Linux does not inherit O_NONBLOCK from the listener, so ask.
+        flags: u32 = posix.SOCK.CLOEXEC | posix.SOCK.NONBLOCK,
     },
 
     connect: struct {
