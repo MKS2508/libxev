@@ -585,14 +585,14 @@ pub const afd = struct {
 
     /// The final status of a completed poll.
     pub fn completionStatus(overlapped: *const OVERLAPPED) win.NTSTATUS {
-        return @enumFromInt(@as(u32, @truncate(overlapped.Internal)));
+        return @fromBackingInt(@intCast(@as(u32, @truncate(overlapped.Internal))));
     }
 };
 
 // --- High-level wrapper functions ---
 
 pub fn unexpectedWSAError(err: ws2_32.WinsockError) error{Unexpected} {
-    return unexpectedError(@as(Win32Error, @enumFromInt(@intFromEnum(err))));
+    return unexpectedError(@as(Win32Error, @fromBackingInt(@intCast(@backingInt(err)))));
 }
 
 pub fn QueryPerformanceCounter() u64 {
