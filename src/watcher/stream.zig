@@ -89,7 +89,7 @@ pub fn Shared(comptime xev: type) type {
                     .epoll,
                     .iocp,
                     => if (result.poll) |_|
-                        @enumFromInt(c.op.poll.events)
+                        @fromBackingInt(@intCast(c.op.poll.events))
                     else |err|
                         err,
 
